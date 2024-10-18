@@ -7,8 +7,12 @@ function jwt() {
     const { secret } = config;
     return expressjwt({ secret, algorithms: ['HS256'] }).unless({
         path: [
-            // public routes that don't require authentication
-            '/users/authenticate'
+            '/users/signup',
+            '/users/login',
+            { url: /\/profile\/fetch\/.*/, methods: ['GET'] }, // Skip authentication for GET requests to /profile/fetch
+            { url: /\/profile\/update\/.*/, methods: ['PUT'] },
+            { url: '/profile/create', methods: ['POST'] },
         ]
     });
 }
+

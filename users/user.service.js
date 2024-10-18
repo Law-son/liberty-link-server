@@ -1,21 +1,47 @@
-﻿const config = require('config.json');
+﻿const crypto = require('crypto');
+const config = require('config.json');
 const jwt = require('jsonwebtoken');
-
-// users hardcoded for simplicity, store in a db for production applications
-const users = [{ id: 1, username: 'test', password: 'test', firstName: 'Test', lastName: 'User' }];
+const userModel = require('../models/user.model');
 
 module.exports = {
-    authenticate,
-    getAll
+    signUp,
+    login
 };
 
-async function authenticate({ username, password }) {
-    const user = users.find(u => u.username === username && u.password === password);
+async function signUp({ email, password }) {
+    const user = await userModel.findOne({ email });
 
-    if (!user) throw 'Username or password is incorrect';
+    if (user) throw 'Email already exists.';
 
-    // create a jwt token that is valid for 7 days
-    const token = jwt.sign({ sub: user.id }, config.secret, { expiresIn: '7d' });
+    const hash = crypto.createHash('sha256');
+    hash.update(password);
+    const hashedPassword = hash.digest('hex');
+
+    const newUser = new userModel({ email, password: hashedPassword });
+
+    await newUser.save();
+
+    const token = jwt.sign({ sub: newUser._id }, config.secret, { expiresIn: '7d' });
+
+    return {
+        ...omitPassword(newUser),
+        token
+    };
+}
+
+
+async function login({ email, password }) {
+    const user = await userModel.findOne({ email });
+
+    if (!user) throw 'Invalid email or password.';
+
+    const hash = crypto.createHash('sha256');
+    hash.update(password);
+    const hashedPassword = hash.digest('hex');
+
+    if (user.password !== hashedPassword) throw 'Invalid email or password.';
+
+    const token = jwt.sign({ sub: user._id }, config.secret, { expiresIn: '7d' });
 
     return {
         ...omitPassword(user),
@@ -23,13 +49,10 @@ async function authenticate({ username, password }) {
     };
 }
 
-async function getAll() {
-    return users.map(u => omitPassword(u));
-}
-
-// helper functions
 
 function omitPassword(user) {
-    const { password, ...userWithoutPassword } = user;
+    const { password, ...userWithoutPassword } = user.toObject();
     return userWithoutPassword;
 }
+
+

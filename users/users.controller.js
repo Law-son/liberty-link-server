@@ -3,19 +3,26 @@ const router = express.Router();
 const userService = require('./user.service');
 
 // routes
-router.post('/authenticate', authenticate);
-router.get('/', getAll);
+router.post('/signup', signUp);
+router.post('/login', login);
 
 module.exports = router;
 
-function authenticate(req, res, next) {
-    userService.authenticate(req.body)
+function signUp(req, res, next) {
+    userService.signUp(req.body)
         .then(user => res.json(user))
-        .catch(next);
+        .catch(err => {
+            res.status(400).json({ message: err.message });
+            next(err);
+        });
 }
 
-function getAll(req, res, next) {
-    userService.getAll()
-        .then(users => res.json(users))
-        .catch(next);
+function login(req, res, next) {
+    userService.login(req.body)
+        .then(user => res.json(user))
+        .catch(err => {
+            res.status(401).json({ message: 'Invalid email or password' });
+            next(err);
+        });
 }
+
